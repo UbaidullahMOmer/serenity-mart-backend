@@ -11,14 +11,14 @@ const orderSchema = mongoose.Schema(
       required: [true, "Please add an email"],
     },
     phone: {
-      type: Number,
-      required: [true, "Please add a phone number"],
-    },
+        type: String,  // Change this from Number to String
+        required: [true, "Please add a phone number"],
+      },
     address: {
       type: String,
       required: [true, "Please add an address"],
     },
-    total: {
+    total: {    
       type: Number,
       required: [true, "Please add a total price"],
     },

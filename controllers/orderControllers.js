@@ -20,7 +20,7 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
 //@access : public
 const createOrder = asyncHandler(async (req, res) => {
   const { name, email, phone, address, total, status, products } = req.body;
-  if (!name || !email || !products || products.length === 0) {
+  if (!name || !email || !products) {
     res.status(400);
     throw new Error("Please provide name, email, and at least one product");
   }
