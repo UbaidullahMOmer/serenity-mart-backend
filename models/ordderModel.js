@@ -4,29 +4,37 @@ const orderSchema = mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Please add a name"],
+      required: [true, "Please add the customer name"],
     },
     email: {
       type: String,
-      required: [true, "Please add an email"],
+      required: [true, "Please add the customer email address"],
     },
     phone: {
-        type: String,  // Change this from Number to String
-        required: [true, "Please add a phone number"],
-      },
+      type: String,
+      required: [true, "Please add the customer phone number"],
+    },
     address: {
       type: String,
-      required: [true, "Please add an address"],
+      required: [true, "Please add the customer address"],
     },
-    total: {    
+    total: {
       type: Number,
-      required: [true, "Please add a total price"],
+      required: [true, "Please add the total amount"],
     },
     status: {
       type: String,
+      required: [true, "Please add the order status"],
       default: "Pending",
     },
-    products: Array,
+    products: {
+      type: Array,
+      required: [true, "Please add at least one product"],
+    },
+    paymentIntentId: {
+      type: String,
+      required: [true, "Please add the Stripe Payment Intent ID"],
+    },
   },
   {
     timestamps: true,
