@@ -8,15 +8,14 @@ connectDB();
 
 const app = express();
 
-// Updated CORS configuration
 app.use(cors({
-  origin: ['http://localhost:5173', process.env.CLIENT_URL], // Add your Vite dev server URL
+  origin: ['http://localhost:5173', process.env.CLIENT_URL],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-const port = process.env.PORT || 5001; // Make sure this matches the port you're using
+const port = process.env.PORT || 5001;
 
 app.use(express.json());
 
@@ -28,3 +27,5 @@ app.use(errorHandler);
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+module.exports = app;
