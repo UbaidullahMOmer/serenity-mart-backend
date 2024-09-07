@@ -1,5 +1,5 @@
 const asyncHandler = require("express-async-handler");
-const Order = require("../models/ordderModel");
+const Order = require("../models/orderModel");
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 const getAllOrders = asyncHandler(async (req, res, next) => {
   try {
