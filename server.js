@@ -19,6 +19,9 @@ app.use(cors({
 const port = process.env.PORT || 5001; // Make sure this matches the port you're using
 
 app.use(express.json());
+app.get("/", (req, res) => {
+  res.send("Serenity Mart Backend API");
+});
 
 app.use("/api/order", require("./routes/orderRoutes"));
 app.use("/api/stripe", require("./routes/stripeRoutes"));
