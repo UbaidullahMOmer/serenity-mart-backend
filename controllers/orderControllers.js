@@ -19,7 +19,6 @@ const createOrder = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Verify the payment intent
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     
     if (paymentIntent.status !== "succeeded") {
@@ -36,7 +35,7 @@ const createOrder = asyncHandler(async (req, res) => {
       products,
       paymentIntentId,
       specialInstructions,
-      status: "Pending", // Add an initial status
+      status: "Pending",
     });
 
     res.status(201).json(order);

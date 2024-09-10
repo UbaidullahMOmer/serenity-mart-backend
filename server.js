@@ -23,6 +23,7 @@ app.get("/", (req, res) => {
   res.send("Serenity Mart Backend API");
 });
 
+app.use("/api/products", require("./routes/productsRoutes"));
 app.use("/api/order", require("./routes/orderRoutes"));
 app.use("/api/stripe", require("./routes/stripeRoutes"));
 
