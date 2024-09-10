@@ -30,7 +30,7 @@ const getProducts = asyncHandler(async (req, res) => {
 const createProduct = asyncHandler(async (req, res) => {
   const { name, price, image, description, category, discount } = req.body;
 
-  if (!name || !price || !image || !description || !category) {
+  if (!name || !price || !image || !description) {
     res.status(400);
     throw new Error("Please provide all required fields");
   }
