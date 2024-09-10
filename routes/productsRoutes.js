@@ -4,7 +4,7 @@ const {
   getProducts,
   createProduct,
   updateProduct,
-  getProduct,
+  getProduct, 
   deleteProduct,
 } = require("../controllers/productControllers");
 

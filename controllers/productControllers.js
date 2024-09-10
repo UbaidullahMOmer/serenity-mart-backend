@@ -2,8 +2,6 @@ const asyncHandler = require("express-async-handler");
 const Product = require("../models/productModel");
 const multer = require("multer");
 const path = require("path");
-
-// Configure multer for handling file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
