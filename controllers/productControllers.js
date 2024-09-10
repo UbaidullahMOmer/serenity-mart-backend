@@ -1,5 +1,24 @@
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/productModel");
+const multer = require("multer");
+const path = require("path");
+
+// Configure multer for handling file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png|gif/;
+    const extname = filetypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+    const mimetype = filetypes.test(file.mimetype);
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb("Error: Images Only!");
+    }
+  },
+}).single("image");
 
 const getProducts = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -26,51 +45,69 @@ const getProducts = asyncHandler(async (req, res) => {
     totalProducts: count,
   });
 });
-
 const createProduct = asyncHandler(async (req, res) => {
-  const { name, price, image, description, category, discount } = req.body;
+  upload(req, res, async (err) => {
+    if (err) {
+      res.status(400);
+      throw new Error(err.message);
+    }
 
-  // if (!name || !price || !image || !description) {
-  //   res.status(400);
-  //   throw new Error("Please provide all required fields");
-  // }
+    const { name, price, description, category, discount } = req.body;
 
-  const discountPrice = discount ? price - (price * discount) / 100 : price;
+    if (!name || !price || !description || !category || !req.file) {
+      res.status(400);
+      throw new Error("Please provide all required fields including an image");
+    }
 
-  const product = await Product.create({
-    name,
-    price,
-    discountPrice,
-    image,
-    description,
-    discount: discount || 0,
-    category,
+    const image = req.file.buffer.toString("base64");
+    const discountPrice = discount ? price - (price * discount) / 100 : price;
+
+    const product = await Product.create({
+      name,
+      price,
+      discountPrice,
+      image: `data:${req.file.mimetype};base64,${image}`,
+      description,
+      discount: discount || 0,
+      category,
+    });
+
+    res.status(201).json(product);
   });
-
-  res.status(201).json(product);
 });
 
 const updateProduct = asyncHandler(async (req, res) => {
-  const { name, price, image, description, category, discount } = req.body;
-  const product = await Product.findById(req.params.id);
+  upload(req, res, async (err) => {
+    if (err) {
+      res.status(400);
+      throw new Error(err.message);
+    }
 
-  if (!product) {
-    res.status(404);
-    throw new Error("Product not found");
-  }
+    const { name, price, description, category, discount } = req.body;
+    const product = await Product.findById(req.params.id);
 
-  product.name = name || product.name;
-  product.price = price || product.price;
-  product.image = image || product.image;
-  product.description = description || product.description;
-  product.category = category || product.category;
-  product.discount = discount !== undefined ? discount : product.discount;
-  product.discountPrice = product.discount
-    ? product.price - (product.price * product.discount) / 100
-    : product.price;
+    if (!product) {
+      res.status(404);
+      throw new Error("Product not found");
+    }
 
-  const updatedProduct = await product.save();
-  res.status(200).json(updatedProduct);
+    product.name = name || product.name;
+    product.price = price || product.price;
+    product.description = description || product.description;
+    product.category = category || product.category;
+    product.discount = discount !== undefined ? discount : product.discount;
+    product.discountPrice = product.discount
+      ? product.price - (product.price * product.discount) / 100
+      : product.price;
+
+    if (req.file) {
+      const image = req.file.buffer.toString("base64");
+      product.image = `data:${req.file.mimetype};base64,${image}`;
+    }
+
+    const updatedProduct = await product.save();
+    res.status(200).json(updatedProduct);
+  });
 });
 
 const getProduct = asyncHandler(async (req, res) => {
