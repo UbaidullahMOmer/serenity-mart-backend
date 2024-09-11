@@ -30,7 +30,7 @@ const couponCodeSchema = mongoose.Schema(
         },
         usageLimit: {
             type: Number,
-            default: null,
+            default: 0,
         },
         usageCount: {
             type: Number,
