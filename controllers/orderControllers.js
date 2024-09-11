@@ -11,16 +11,29 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
   }
 });
 const createOrder = asyncHandler(async (req, res) => {
-  const { name, email, phone, address, total, products, paymentIntentId, specialInstructions } = req.body;
+  const {
+    name,
+    email,
+    phone,
+    address,
+    total,
+    products,
+    paymentIntentId,
+    specialInstructions,
+    status,
+    deleveryType
+  } = req.body;
 
   if (!name || !email || !products || !paymentIntentId) {
     res.status(400);
-    throw new Error("Please provide name, email, products, and payment intent ID");
+    throw new Error(
+      "Please provide name, email, products, and payment intent ID"
+    );
   }
 
   try {
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    
+
     if (paymentIntent.status !== "succeeded") {
       res.status(400);
       throw new Error("Payment not successful");
@@ -62,9 +75,21 @@ const deleteOrder = asyncHandler(async (req, res) => {
   res.status(200).json({ id: req.params.id });
 });
 
+const updateOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+  order.status = req.body.status || order.status;
+  await order.save();
+  res.status(200).json(order);
+});
+
 module.exports = {
   getAllOrders,
   createOrder,
   getOrder,
   deleteOrder,
+  updateOrder,
 };

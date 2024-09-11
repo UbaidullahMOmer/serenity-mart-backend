@@ -35,6 +35,18 @@ const orderSchema = mongoose.Schema(
       type: String,
       required: [true, "Please add the Stripe Payment Intent ID"],
     },
+    specialInstructions: {
+      type: String,
+    },
+    couponCode: {
+      type: String,
+    },
+    couponDiscount: {
+      type: Number,
+    },
+    deliveryType: {
+      type: String,
+    },
   },
   {
     timestamps: true,
