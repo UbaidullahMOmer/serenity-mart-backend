@@ -18,13 +18,14 @@ const createOrder = asyncHandler(async (req, res) => {
     address,
     total,
     products,
+    discount,
     paymentIntentId,
     specialInstructions,
     status,
-    deleveryType
+    paymentMethod = "stripe"
   } = req.body;
 
-  if (!name || !email || !products || !paymentIntentId) {
+  if (!name || !email || !products, !total, !address, !phone) {
     res.status(400);
     throw new Error(
       "Please provide name, email, products, and payment intent ID"
@@ -32,11 +33,13 @@ const createOrder = asyncHandler(async (req, res) => {
   }
 
   try {
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-    if (paymentIntent.status !== "succeeded") {
-      res.status(400);
-      throw new Error("Payment not successful");
+    if(paymentMethod == 'stripe'){
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  
+      if (paymentIntent.status !== "succeeded") {
+        res.status(400);
+        throw new Error("Payment not successful");
+      }
     }
 
     const order = await Order.create({
@@ -44,21 +47,23 @@ const createOrder = asyncHandler(async (req, res) => {
       email,
       phone,
       address,
-      total,
+      total, 
       products,
       paymentIntentId,
       specialInstructions,
-      status: "Pending",
+      discount,
+      status,
+      paymentMethod,
     });
 
     res.status(201).json(order);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Failed to create order" });
+    res.status(500).json({ error: `Failed to create order ${error} ` });
   }
 });
 const getOrder = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById(req.params.id); 
   if (!order) {
     res.status(404);
     throw new Error("Order not found");
@@ -66,13 +71,19 @@ const getOrder = asyncHandler(async (req, res) => {
   res.status(200).json(order);
 });
 const deleteOrder = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id);
-  if (!order) {
-    res.status(404);
-    throw new Error("Order not found");
+  try {
+
+    const order = await Order.findByIdAndDelete(req.params.id);
+    if (!order) {
+      res.status(404);
+      throw new Error("Order not found");
+    }
+    res.status(200).json({ id: req.params.id });
+  }  catch (error) {
+    console.error(error);
+    res.status(500).json({ error: `Failed to delete order ${error} ` });
   }
-  await order.remove();
-  res.status(200).json({ id: req.params.id });
+
 });
 
 const updateOrder = asyncHandler(async (req, res) => {

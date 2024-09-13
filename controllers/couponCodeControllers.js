@@ -154,6 +154,20 @@ const validateCouponCode = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: "Coupon code is no longer active" });
     }
 
+    // Check if usage count has reached the limit
+    if (couponCode.usageCount >= couponCode.usageLimit) {
+      couponCode.isActive = false;
+      await couponCode.save();
+      return res.status(400).json({ message: "Coupon usage limit reached" });
+    }
+
+    // Increment the usage count
+    couponCode.usageCount += 1;
+    if (couponCode.usageCount === couponCode.usageLimit) {
+      couponCode.isActive = false;
+    }
+    await couponCode.save();
+
     res.status(200).json({
       valid: true,
       discount: couponCode.discount,

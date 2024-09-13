@@ -58,10 +58,13 @@ const createProduct = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: err });
     }
 
-    const { name, price, description, category, discount } = req.body;
+    const { name, price, description, category, discount, isInStock } =
+      req.body;
 
     if (!name || !price || !description || !category) {
-      return res.status(400).json({ message: "Please provide all required fields" });
+      return res
+        .status(400)
+        .json({ message: "Please provide all required fields" });
     }
 
     if (!req.file) {
@@ -69,8 +72,9 @@ const createProduct = asyncHandler(async (req, res) => {
     }
 
     const imageBuffer = req.file.buffer.toString("base64");
-    const discountPrice = discount ? (price - (price * discount) / 100).toFixed(2) : price.toFixed(2);
-
+    const discountPrice = discount
+      ? (price - (price * discount) / 100).toFixed(2)
+      : price.toFixed(2);
 
     try {
       const product = await Product.create({
@@ -81,16 +85,18 @@ const createProduct = asyncHandler(async (req, res) => {
         description,
         discount: discount || 0,
         category,
+        isInStock: isInStock || false,
       });
 
       res.status(201).json(product);
     } catch (error) {
       console.error("Error in createProduct:", error);
-      res.status(500).json({ message: "Failed to create product", error: error.message });
+      res
+        .status(500)
+        .json({ message: "Failed to create product", error: error.message });
     }
   });
 });
-
 
 const updateProduct = asyncHandler(async (req, res) => {
   try {
@@ -103,42 +109,48 @@ const updateProduct = asyncHandler(async (req, res) => {
 
     upload(req, res, async (err) => {
       if (err) {
-        res.status(400);
+        res.status(400).json({mssage:  "Error uploading file", error: err.message});
+
         throw new Error(err.message);
       }
 
-      const { name, price, description, category, discount } = req.body;
+      const { name, price, description, category, discount, isInStock } =
+        req.body;
       const product = await Product.findById(id);
 
       if (!product) {
-        res.status(404);
+        res.status(404).json({message: "Product not Found or check your id"})
         throw new Error("Product not found");
-      }
+      } else {
+        product.name = name || product.name;
+        product.price = price || product.price;
+        product.description = description || product.description;
+        product.category = category || product.category;
+        product.isInStock  = isInStock || product.isInStock;
+        product.discount = discount !== undefined ? discount : product.discount;
+        product.discountPrice = product.discount
+          ? (product.price - (product.price * product.discount) / 100).toFixed(
+              2
+            )
+          : product.price.toFixed(2);
+        if (req.file) {
+          const image = req.file.buffer.toString("base64");
+          product.image = `data:${req.file.mimetype};base64,${image}`;
+        }
 
-      product.name = name || product.name;
-      product.price = price || product.price;
-      product.description = description || product.description;
-      product.category = category || product.category;
-      product.discount = discount !== undefined ? discount : product.discount;
-      product.discountPrice = product.discount
-        ? (product.price - (product.price * product.discount) / 100).toFixed(2)
-        : product.price.toFixed(2);
-      if (req.file) {
-        const image = req.file.buffer.toString("base64");
-        product.image = `data:${req.file.mimetype};base64,${image}`;
+        const updatedProduct = await product.save();
+        res.status(200).json(updatedProduct);
       }
-
-      const updatedProduct = await product.save();
-      res.status(200).json(updatedProduct);
     });
   } catch (error) {
-    console.error("Error in updateProduct:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to update product", error: error.message });
+    console.error("Error in createProduct:", error);
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: "Validation failed", errors: validationErrors });
+    }
+    res.status(500).json({ message: "Failed to create product", error: error.message });
   }
 });
-
 const getProduct = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;

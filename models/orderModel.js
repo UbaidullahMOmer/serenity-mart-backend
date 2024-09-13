@@ -24,7 +24,6 @@ const orderSchema = mongoose.Schema(
     },
     status: {
       type: String,
-      required: [true, "Please add the order status"],
       default: "Pending",
     },
     products: {
@@ -33,7 +32,6 @@ const orderSchema = mongoose.Schema(
     },
     paymentIntentId: {
       type: String,
-      required: [true, "Please add the Stripe Payment Intent ID"],
     },
     specialInstructions: {
       type: String,
@@ -44,9 +42,10 @@ const orderSchema = mongoose.Schema(
     couponDiscount: {
       type: Number,
     },
-    deliveryType: {
+    paymentMethod: {
       type: String,
-    },
+      default: "stripe"
+    }
   },
   {
     timestamps: true,
