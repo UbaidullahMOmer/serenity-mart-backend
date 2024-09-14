@@ -8,12 +8,19 @@ connectDB();
 
 const app = express();
 
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', "https://serenity-mart-backend.vercel.app/", "https://www.serenitymartpk.com/", process.env.CLIENT_URL],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://serenity-mart-backend.vercel.app/",
+      "https://www.serenitymartpk.com/",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 const port = process.env.PORT || 5001;
 
@@ -34,4 +41,4 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
-module.exports = app
+module.exports = app;
