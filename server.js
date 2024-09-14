@@ -15,6 +15,7 @@ const corsOptions = {
       "http://localhost:5173",
       "http://localhost:5174",
       "https://serenity-mart-backend.vercel.app",
+      "https://serenity-mart-dashboard.vercel.app",
       "https://www.serenitymartpk.com",
     ];
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
