@@ -9,7 +9,7 @@ connectDB();
 const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', process.env.CLIENT_URL],
+  origin: ['http://localhost:5173', 'http://localhost:5174', "https://serenity-mart-backend.vercel.app/", "https://www.serenitymartpk.com/", process.env.CLIENT_URL],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization']
