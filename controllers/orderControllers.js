@@ -2,13 +2,15 @@ const asyncHandler = require("express-async-handler");
 const Order = require("../models/orderModel");
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 const nodemailer = require('nodemailer');
+const fs = require('fs').promises;
+const path = require('path');
 
 // Configure nodemailer transporter
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: "itsubaidullahomer@gmail.com",
-    pass: "jvpl omvt bcab trrx"
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
@@ -40,6 +42,7 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
     next(error);
   }
 });
+
 const createOrder = asyncHandler(async (req, res) => {
   const {
     name,
@@ -85,28 +88,22 @@ const createOrder = asyncHandler(async (req, res) => {
       status,
       paymentMethod,
     });
-    console.log(email, "email")
+
+    // Read the HTML template
+    const templatePath = path.join(__dirname, './orderConfirmationCool.html');
+    let htmlTemplate = await fs.readFile(templatePath, 'utf-8');
+
+    // Replace placeholders with actual data
+    htmlTemplate = htmlTemplate.replace('{{name}}', name)
+                               .replace('{{orderId}}', order._id)
+                               .replace('{{total}}', total)
+                               .replace('{{status}}', status || 'Pending');
+
     // Send email notification for new order
     const orderCreationEmail = {
       to: email,
-      subject: "Your Order Has Been Received",
-      text: `
-        Dear ${name},
-
-        Thank you for your order! We're pleased to confirm that we've received your order and it is now being processed.
-
-        Order Details:
-        - Order ID: ${order._id}
-        - Total Amount: $${total}
-        - Status: ${status || 'Pending'}
-
-        We will keep you updated on the status of your order. If you have any questions, please don't hesitate to contact us.
-
-        Thank you for choosing our service!
-
-        Best regards,
-        [Your Company Name]
-      `
+      subject: "🎉 Your Awesome Order is Confirmed! 🛍️",
+      html: htmlTemplate
     };
 
     await transporter.sendMail(orderCreationEmail);
@@ -122,6 +119,7 @@ const createOrder = asyncHandler(async (req, res) => {
     res.status(500).json({ error: `Failed to create order: ${error}` });
   }
 });
+
 const getOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id); 
   if (!order) {
