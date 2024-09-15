@@ -11,7 +11,7 @@ const upload = multer({
     const extname = filetypes.test(
       path.extname(file.originalname).toLowerCase()
     );
-    const mimetype = file.mimetype.startsWith('image/');
+    const mimetype = filetypes.test(file.mimetype);
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -21,11 +21,14 @@ const upload = multer({
 }).single("image");
 
 const getProducts = asyncHandler(async (req, res) => {
+  console.log("Entering getProducts function");
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const sort = req.query.sort || "-createdAt";
     const filter = {};
+
+    console.log(`Page: ${page}, Limit: ${limit}, Sort: ${sort}`);
 
     if (req.query.category) filter.category = req.query.category;
     if (req.query.minPrice)
@@ -33,11 +36,18 @@ const getProducts = asyncHandler(async (req, res) => {
     if (req.query.maxPrice)
       filter.price = { ...filter.price, $lte: parseFloat(req.query.maxPrice) };
 
+    console.log("Applied filters:", JSON.stringify(filter));
+
+    console.log("Counting documents...");
     const count = await Product.countDocuments(filter);
+    console.log(`Total documents: ${count}`);
+
+    console.log("Fetching products...");
     const products = await Product.find(filter)
       .sort(sort)
       .skip((page - 1) * limit)
       .limit(limit);
+    console.log(`Fetched ${products.length} products`);
 
     res.status(200).json({
       products,
@@ -45,11 +55,13 @@ const getProducts = asyncHandler(async (req, res) => {
       totalPages: Math.ceil(count / limit),
       totalProducts: count,
     });
+    console.log("Response sent successfully");
   } catch (error) {
     console.error("Error in getProducts:", error);
+    console.error("Stack trace:", error.stack);
     res
       .status(500)
-      .json({ message: "Failed to fetch products", error: error.message });
+      .json({ message: "Failed to fetch products", error: error.toString(), stack: error.stack });
   }
 });
 
