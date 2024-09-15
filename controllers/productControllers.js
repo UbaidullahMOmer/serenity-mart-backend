@@ -24,47 +24,67 @@ const getProducts = asyncHandler(async (req, res) => {
   console.log("Entering getProducts function");
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const sort = req.query.sort || "-createdAt";
-    const filter = {};
+    const limit = parseInt(req.query.limit) || 20;
+    const includeImages = req.query.includeImages === 'true';
 
-    console.log(`Page: ${page}, Limit: ${limit}, Sort: ${sort}`);
+    console.log(`Page: ${page}, Limit: ${limit}, Include Images: ${includeImages}`);
 
-    if (req.query.category) filter.category = req.query.category;
-    if (req.query.minPrice)
-      filter.price = { $gte: parseFloat(req.query.minPrice) };
-    if (req.query.maxPrice)
-      filter.price = { ...filter.price, $lte: parseFloat(req.query.maxPrice) };
+    let query = Product.find();
+    
+    if (!includeImages) {
+      query = query.select('-image'); // Exclude the image field
+    }
 
-    console.log("Applied filters:", JSON.stringify(filter));
-
-    console.log("Counting documents...");
-    const count = await Product.countDocuments(filter);
-    console.log(`Total documents: ${count}`);
-
-    console.log("Fetching products...");
-    const products = await Product.find(filter)
-      .sort(sort)
+    const products = await query
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
+
+    const total = await Product.countDocuments();
+
     console.log(`Fetched ${products.length} products`);
+
+    // If images were excluded, add a placeholder or URL
+    if (!includeImages) {
+      products.forEach(product => {
+        product.imageUrl = `/api/products/${product._id}/image`;
+      });
+    }
 
     res.status(200).json({
       products,
+      totalPages: Math.ceil(total / limit),
       currentPage: page,
-      totalPages: Math.ceil(count / limit),
-      totalProducts: count,
+      totalProducts: total
     });
     console.log("Response sent successfully");
   } catch (error) {
     console.error("Error in getProducts:", error);
-    console.error("Stack trace:", error.stack);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch products", error: error.toString(), stack: error.stack });
+    res.status(500).json({ message: "Failed to fetch products", error: error.toString() });
   }
 });
-
+const getProductImage = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id).select('image');
+    if (!product || !product.image) {
+      return res.status(404).json({ message: "Image not found" });
+    }
+    
+    // Assuming the image is stored as "data:image/jpeg;base64,/9j/4AAQ..."
+    const [, base64Image] = product.image.split(',');
+    const imageBuffer = Buffer.from(base64Image, 'base64');
+    
+    res.writeHead(200, {
+      'Content-Type': 'image/jpeg',
+      'Content-Length': imageBuffer.length
+    });
+    res.end(imageBuffer);
+  } catch (error) {
+    console.error("Error in getProductImage:", error);
+    res.status(500).json({ message: "Failed to fetch product image", error: error.toString() });
+  }
+});
 const createProduct = asyncHandler(async (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
@@ -216,4 +236,5 @@ module.exports = {
   updateProduct,
   getProduct,
   deleteProduct,
+  getProductImage
 };
