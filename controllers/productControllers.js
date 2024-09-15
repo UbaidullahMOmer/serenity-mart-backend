@@ -2,15 +2,23 @@ const asyncHandler = require("express-async-handler");
 const Product = require("../models/productModel");
 const multer = require("multer");
 const path = require("path");
+const fs = require('fs').promises;
+
+// Configure multer for file storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'public/images/products')
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname))
+  }
+});
 
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: storage,
   fileFilter: (req, file, cb) => {
-    // Expanded list of image file types
     const filetypes = /jpeg|jpg|png|gif|webp|svg|tiff|bmp/;
-    const extname = filetypes.test(
-      path.extname(file.originalname).toLowerCase()
-    );
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = filetypes.test(file.mimetype);
     if (mimetype && extname) {
       return cb(null, true);
@@ -21,100 +29,65 @@ const upload = multer({
 }).single("image");
 
 const getProducts = asyncHandler(async (req, res) => {
-  console.log("Entering getProducts function");
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const includeImages = req.query.includeImages === 'true';
+    const limit = parseInt(req.query.limit) || 10;
+    const sort = req.query.sort || "-createdAt";
+    const filter = {};
 
-    console.log(`Page: ${page}, Limit: ${limit}, Include Images: ${includeImages}`);
+    if (req.query.category) filter.category = req.query.category;
+    if (req.query.minPrice)
+      filter.price = { $gte: parseFloat(req.query.minPrice) };
+    if (req.query.maxPrice)
+      filter.price = { ...filter.price, $lte: parseFloat(req.query.maxPrice) };
 
-    let query = Product.find();
-    
-    if (!includeImages) {
-      query = query.select('-image'); // Exclude the image field
-    }
-
-    const products = await query
+    const count = await Product.countDocuments(filter);
+    const products = await Product.find(filter)
+      .sort(sort)
       .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
-
-    const total = await Product.countDocuments();
-
-    console.log(`Fetched ${products.length} products`);
-
-    // If images were excluded, add a placeholder or URL
-    if (!includeImages) {
-      products.forEach(product => {
-        product.imageUrl = `/api/products/${product._id}/image`;
-      });
-    }
+      .limit(limit);
 
     res.status(200).json({
       products,
-      totalPages: Math.ceil(total / limit),
       currentPage: page,
-      totalProducts: total
+      totalPages: Math.ceil(count / limit),
+      totalProducts: count,
     });
-    console.log("Response sent successfully");
   } catch (error) {
     console.error("Error in getProducts:", error);
-    res.status(500).json({ message: "Failed to fetch products", error: error.toString() });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch products", error: error.message });
   }
 });
-const getProductImage = asyncHandler(async (req, res) => {
-  try {
-    const { id } = req.params;
-    const product = await Product.findById(id).select('image');
-    if (!product || !product.image) {
-      return res.status(404).json({ message: "Image not found" });
-    }
-    
-    // Assuming the image is stored as "data:image/jpeg;base64,/9j/4AAQ..."
-    const [, base64Image] = product.image.split(',');
-    const imageBuffer = Buffer.from(base64Image, 'base64');
-    
-    res.writeHead(200, {
-      'Content-Type': 'image/jpeg',
-      'Content-Length': imageBuffer.length
-    });
-    res.end(imageBuffer);
-  } catch (error) {
-    console.error("Error in getProductImage:", error);
-    res.status(500).json({ message: "Failed to fetch product image", error: error.toString() });
-  }
-});
+
 const createProduct = asyncHandler(async (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
       return res.status(400).json({ message: err });
     }
 
-    const { name, price, description, category, discount, isInStock } =
-      req.body;
+    const { name, price, description, category, discount, isInStock } = req.body;
 
     if (!name || !price || !description || !category) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all required fields" });
+      return res.status(400).json({ message: "Please provide all required fields" });
     }
 
     if (!req.file) {
       return res.status(400).json({ message: "Please provide an image file" });
     }
 
-    const imageBuffer = req.file.buffer.toString("base64");
-    const discountPrice = discount
-      ? (price - (price * discount) / 100).toFixed(2)
-      : price.toFixed(2);
-
     try {
+      const imageUrl = `https://serenity-mart-backend.vercel.app//images/products/${req.file.filename}`;
+      const discountPrice = discount
+        ? (price - (price * discount) / 100).toFixed(2)
+        : price.toFixed(2);
+
       const product = await Product.create({
         name,
         price,
         discountPrice,
-        image: `data:${req.file.mimetype};base64,${imageBuffer}`,
+        image: imageUrl,
         description,
         discount: discount || 0,
         category,
@@ -124,70 +97,68 @@ const createProduct = asyncHandler(async (req, res) => {
       res.status(201).json(product);
     } catch (error) {
       console.error("Error in createProduct:", error);
-      res
-        .status(500)
-        .json({ message: "Failed to create product", error: error.message });
+      res.status(500).json({ message: "Failed to create product", error: error.message });
     }
   });
 });
 
 const updateProduct = asyncHandler(async (req, res) => {
-  try {
+  upload(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ message: err });
+    }
+
     const { id } = req.params;
-    console.log("Requested product ID for update:", id);
+    const { name, price, description, category, discount, isInStock } = req.body;
 
     if (!id || id === "null" || id === "undefined") {
       return res.status(400).json({ message: "Product ID is required" });
     }
 
-    upload(req, res, async (err) => {
-      if (err) {
-        res.status(400).json({mssage:  "Error uploading file", error: err.message});
-
-        throw new Error(err.message);
-      }
-
-      const { name, price, description, category, discount, isInStock } =
-        req.body;
+    try {
       const product = await Product.findById(id);
 
       if (!product) {
-        res.status(404).json({message: "Product not Found or check your id"})
-        throw new Error("Product not found");
-      } else {
-        product.name = name || product.name;
-        product.price = price || product.price;
-        product.description = description || product.description;
-        product.category = category || product.category;
-        product.isInStock  = isInStock || product.isInStock;
-        product.discount = discount !== undefined ? discount : product.discount;
-        product.discountPrice = product.discount
-          ? (product.price - (product.price * product.discount) / 100).toFixed(
-              2
-            )
-          : product.price.toFixed(2);
-        if (req.file) {
-          const image = req.file.buffer.toString("base64");
-          product.image = `data:${req.file.mimetype};base64,${image}`;
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      product.name = name || product.name;
+      product.price = price || product.price;
+      product.description = description || product.description;
+      product.category = category || product.category;
+      product.isInStock = isInStock !== undefined ? isInStock : product.isInStock;
+      product.discount = discount !== undefined ? discount : product.discount;
+      product.discountPrice = product.discount
+        ? (product.price - (product.price * product.discount) / 100).toFixed(2)
+        : product.price.toFixed(2);
+
+      if (req.file) {
+        // Delete old image if it exists
+        if (product.image) {
+          const oldImagePath = path.join(__dirname, '..', 'public', product.image);
+          await fs.unlink(oldImagePath).catch(err => console.error("Failed to delete old image:", err));
         }
 
-        const updatedProduct = await product.save();
-        res.status(200).json(updatedProduct);
+        const imageUrl = `/images/products/${req.file.filename}`;
+        product.image = imageUrl;
       }
-    });
-  } catch (error) {
-    console.error("Error in createProduct:", error);
-    if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ message: "Validation failed", errors: validationErrors });
+
+      const updatedProduct = await product.save();
+      res.status(200).json(updatedProduct);
+    } catch (error) {
+      console.error("Error in updateProduct:", error);
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map(err => err.message);
+        return res.status(400).json({ message: "Validation failed", errors: validationErrors });
+      }
+      res.status(500).json({ message: "Failed to update product", error: error.message });
     }
-    res.status(500).json({ message: "Failed to create product", error: error.message });
-  }
+  });
 });
+
 const getProduct = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Requested product ID:", id);
 
     if (!id || id === "null" || id === "undefined") {
       return res.status(400).json({ message: "Product ID is required" });
@@ -209,7 +180,6 @@ const getProduct = asyncHandler(async (req, res) => {
 const deleteProduct = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Requested product ID for deletion:", id);
 
     if (!id || id === "null" || id === "undefined") {
       return res.status(400).json({ message: "Product ID is required" });
@@ -218,6 +188,12 @@ const deleteProduct = asyncHandler(async (req, res) => {
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Delete the associated image file
+    if (product.image) {
+      const imagePath = path.join(__dirname, '..', 'public', product.image);
+      await fs.unlink(imagePath).catch(err => console.error("Failed to delete image:", err));
     }
 
     await Product.deleteOne({ _id: id });
@@ -236,5 +212,4 @@ module.exports = {
   updateProduct,
   getProduct,
   deleteProduct,
-  getProductImage
 };

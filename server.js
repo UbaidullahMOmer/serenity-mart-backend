@@ -3,21 +3,21 @@ const connectDB = require("./config/dbConnection");
 const errorHandler = require("./middleware/errorHandler");
 const dotenv = require("dotenv").config();
 const cors = require("cors");
+const path = require("path");
 
 connectDB();
 
 const app = express();
 
-// CORS configuration
 const corsOptions = {
-  origin: '*', // This allows all origins
+  origin: '*',
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
 app.use(cors(corsOptions));
-
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
 const port = process.env.PORT || 5001;
 
 app.use(express.json());
@@ -33,7 +33,7 @@ app.use("/api/order", require("./routes/orderRoutes"));
 app.use("/api/stripe", require("./routes/stripeRoutes"));
 
 app.use(errorHandler);
-
+console.log(path.join(__dirname, 'public/images'));
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
