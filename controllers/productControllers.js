@@ -1,97 +1,82 @@
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/productModel");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const multer = require("multer");
-const path = require("path");
-const fs = require('fs').promises;
 
-// Configure multer for file storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'public/images/products')
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname))
+// Configure Cloudinary
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Configure Cloudinary storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "serenity-mart/products",
+    allowed_formats: ["jpg", "jpeg", "png", "gif", "webp", "svg", "tiff", "bmp"],
+    transformation: [{ width: 500, height: 500, crop: "limit" }]
   }
 });
 
-const upload = multer({
-  storage: storage,
-  fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|gif|webp|svg|tiff|bmp/;
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb("Error: Images Only!");
-    }
-  },
-}).single("image");
+const upload = multer({ storage: storage }).single("image");
 
 const getProducts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, sort = "-createdAt", category, minPrice, maxPrice } = req.query;
+  const filter = {};
+
+  if (category) filter.category = category;
+  if (minPrice || maxPrice) {
+    filter.price = {};
+    if (minPrice) filter.price.$gte = parseFloat(minPrice);
+    if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
+  }
+
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const sort = req.query.sort || "-createdAt";
-    const filter = {};
-
-    if (req.query.category) filter.category = req.query.category;
-    if (req.query.minPrice)
-      filter.price = { $gte: parseFloat(req.query.minPrice) };
-    if (req.query.maxPrice)
-      filter.price = { ...filter.price, $lte: parseFloat(req.query.maxPrice) };
-
     const count = await Product.countDocuments(filter);
     const products = await Product.find(filter)
       .sort(sort)
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(Number(limit));
 
     res.status(200).json({
       products,
-      currentPage: page,
+      currentPage: Number(page),
       totalPages: Math.ceil(count / limit),
       totalProducts: count,
     });
   } catch (error) {
     console.error("Error in getProducts:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch products", error: error.message });
+    res.status(500).json({ message: "Failed to fetch products", error: error.message });
   }
 });
 
 const createProduct = asyncHandler(async (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
-      return res.status(400).json({ message: err });
+      return res.status(400).json({ message: err.message });
     }
 
-    const { name, price, description, category, discount, isInStock } = req.body;
+    const { name, price, description, category, discount = 0, isInStock = false } = req.body;
 
-    if (!name || !price || !description || !category) {
-      return res.status(400).json({ message: "Please provide all required fields" });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ message: "Please provide an image file" });
+    if (!name || !price || !description || !category || !req.file) {
+      return res.status(400).json({ message: "Please provide all required fields and an image" });
     }
 
     try {
-      const imageUrl = `https://serenity-mart-backend.vercel.app//images/products/${req.file.filename}`;
-      const discountPrice = discount
-        ? (price - (price * discount) / 100).toFixed(2)
-        : price.toFixed(2);
+      const discountPrice = discount ? (price - (price * discount) / 100).toFixed(2) : price;
 
       const product = await Product.create({
         name,
         price,
         discountPrice,
-        image: imageUrl,
+        image: req.file.path,
         description,
-        discount: discount || 0,
+        discount,
         category,
-        isInStock: isInStock || false,
+        isInStock,
       });
 
       res.status(201).json(product);
@@ -105,13 +90,13 @@ const createProduct = asyncHandler(async (req, res) => {
 const updateProduct = asyncHandler(async (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
-      return res.status(400).json({ message: err });
+      return res.status(400).json({ message: err.message });
     }
 
     const { id } = req.params;
     const { name, price, description, category, discount, isInStock } = req.body;
 
-    if (!id || id === "null" || id === "undefined") {
+    if (!id) {
       return res.status(400).json({ message: "Product ID is required" });
     }
 
@@ -122,25 +107,25 @@ const updateProduct = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: "Product not found" });
       }
 
-      product.name = name || product.name;
-      product.price = price || product.price;
-      product.description = description || product.description;
-      product.category = category || product.category;
-      product.isInStock = isInStock !== undefined ? isInStock : product.isInStock;
-      product.discount = discount !== undefined ? discount : product.discount;
+      // Update fields if provided
+      if (name) product.name = name;
+      if (price) product.price = price;
+      if (description) product.description = description;
+      if (category) product.category = category;
+      if (isInStock !== undefined) product.isInStock = isInStock;
+      if (discount !== undefined) product.discount = discount;
+
       product.discountPrice = product.discount
         ? (product.price - (product.price * product.discount) / 100).toFixed(2)
         : product.price.toFixed(2);
 
       if (req.file) {
-        // Delete old image if it exists
+        // Delete old image from Cloudinary if it exists
         if (product.image) {
-          const oldImagePath = path.join(__dirname, '..', 'public', product.image);
-          await fs.unlink(oldImagePath).catch(err => console.error("Failed to delete old image:", err));
+          const publicId = product.image.split("/").pop().split(".")[0];
+          await cloudinary.uploader.destroy(publicId);
         }
-
-        const imageUrl = `/images/products/${req.file.filename}`;
-        product.image = imageUrl;
+        product.image = req.file.path;
       }
 
       const updatedProduct = await product.save();
@@ -157,13 +142,13 @@ const updateProduct = asyncHandler(async (req, res) => {
 });
 
 const getProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ message: "Product ID is required" });
+  }
+
   try {
-    const { id } = req.params;
-
-    if (!id || id === "null" || id === "undefined") {
-      return res.status(400).json({ message: "Product ID is required" });
-    }
-
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
@@ -171,38 +156,34 @@ const getProduct = asyncHandler(async (req, res) => {
     res.status(200).json(product);
   } catch (error) {
     console.error("Error in getProduct:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch product", error: error.message });
+    res.status(500).json({ message: "Failed to fetch product", error: error.message });
   }
 });
 
 const deleteProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ message: "Product ID is required" });
+  }
+
   try {
-    const { id } = req.params;
-
-    if (!id || id === "null" || id === "undefined") {
-      return res.status(400).json({ message: "Product ID is required" });
-    }
-
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Delete the associated image file
+    // Delete the associated image from Cloudinary
     if (product.image) {
-      const imagePath = path.join(__dirname, '..', 'public', product.image);
-      await fs.unlink(imagePath).catch(err => console.error("Failed to delete image:", err));
+      const publicId = product.image.split("/").pop().split(".")[0];
+      await cloudinary.uploader.destroy(publicId);
     }
 
     await Product.deleteOne({ _id: id });
     res.status(200).json({ message: "Product removed", id: id });
   } catch (error) {
     console.error("Error in deleteProduct:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to delete product", error: error.message });
+    res.status(500).json({ message: "Failed to delete product", error: error.message });
   }
 });
 
