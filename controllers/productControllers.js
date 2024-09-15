@@ -6,11 +6,12 @@ const path = require("path");
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|gif/;
+    // Expanded list of image file types
+    const filetypes = /jpeg|jpg|png|gif|webp|svg|tiff|bmp/;
     const extname = filetypes.test(
       path.extname(file.originalname).toLowerCase()
     );
-    const mimetype = filetypes.test(file.mimetype);
+    const mimetype = file.mimetype.startsWith('image/');
     if (mimetype && extname) {
       return cb(null, true);
     } else {
