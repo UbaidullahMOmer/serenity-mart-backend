@@ -29,7 +29,8 @@ app.get("/", (req, res) => {
 app.use("/api/couponCode", require("./routes/couponCodeRoutes"));
 app.use("/api/categories", require("./routes/categoriesRoutes"));
 app.use("/api/products", require("./routes/productsRoutes"));
-app.use("/api/deals", require("./routes/dealsRoutes"));
+app.use("/api/hero", require("./routes/heroRoutes"));
+// app.use("/api/deals", require("./routes/dealsRoutes"));
 app.use("/api/order", require("./routes/orderRoutes"));
 app.use("/api/stripe", require("./routes/stripeRoutes"));
 

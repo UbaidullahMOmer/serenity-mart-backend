@@ -4,14 +4,12 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const multer = require("multer");
 
-// Configure Cloudinary
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Configure Cloudinary storage
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
@@ -26,21 +24,18 @@ const upload = multer({ storage: storage }).single("image");
 const getProducts = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, sort = "-createdAt", category, minPrice, maxPrice } = req.query;
   const filter = {};
-
   if (category) filter.category = category;
   if (minPrice || maxPrice) {
     filter.price = {};
     if (minPrice) filter.price.$gte = parseFloat(minPrice);
     if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
   }
-
   try {
     const count = await Product.countDocuments(filter);
     const products = await Product.find(filter)
       .sort(sort)
       .skip((page - 1) * limit)
       .limit(Number(limit));
-
     res.status(200).json({
       products,
       currentPage: Number(page),
