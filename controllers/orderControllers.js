@@ -1,17 +1,17 @@
 const asyncHandler = require("express-async-handler");
 const Order = require("../models/orderModel");
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
-const nodemailer = require('nodemailer');
-const fs = require('fs').promises;
-const path = require('path');
+const nodemailer = require("nodemailer");
+const fs = require("fs").promises;
+const path = require("path");
 
 // Configure nodemailer transporter
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: "gmail",
   auth: {
     user: "itsubaidullahomer@gmail.com",
-    pass: "jvpl omvt bcab trrx"
-  }
+    pass: "jvpl omvt bcab trrx",
+  },
 });
 
 const sendStatusChangeEmail = async (email, status) => {
@@ -20,14 +20,16 @@ const sendStatusChangeEmail = async (email, status) => {
     accepted: "Great news! Your order has been accepted and is being prepared.",
     delivering: "Your order is now out for delivery!",
     delivered: "Your order has been successfully delivered. Enjoy!",
-    completed: "Your order is now completed. Thank you for your business!"
+    completed: "Your order is now completed. Thank you for your business!",
   };
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: `Order Status Update: ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-    text: `Hello,\n\n${statusMessages[status]}\n\nThank you for your order!`
+    subject: `Order Status Update: ${
+      status.charAt(0).toUpperCase() + status.slice(1)
+    }`,
+    text: `Hello,\n\n${statusMessages[status]}\n\nThank you for your order!`,
   };
 
   await transporter.sendMail(mailOptions);
@@ -55,7 +57,7 @@ const createOrder = asyncHandler(async (req, res) => {
     paymentIntentId,
     specialInstructions,
     status,
-    paymentMethod = "stripe"
+    paymentMethod = "stripe",
   } = req.body;
 
   if (!name || !email || !products || !total || !address || !phone) {
@@ -66,9 +68,11 @@ const createOrder = asyncHandler(async (req, res) => {
   }
 
   try {
-    if (paymentMethod === 'stripe') {
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-  
+    if (paymentMethod === "stripe") {
+      const paymentIntent = await stripe.paymentIntents.retrieve(
+        paymentIntentId
+      );
+
       if (paymentIntent.status !== "succeeded") {
         res.status(400);
         throw new Error("Payment not successful");
@@ -80,7 +84,7 @@ const createOrder = asyncHandler(async (req, res) => {
       email,
       phone,
       address,
-      total, 
+      total,
       products,
       paymentIntentId,
       specialInstructions,
@@ -89,26 +93,23 @@ const createOrder = asyncHandler(async (req, res) => {
       paymentMethod,
     });
 
-    // Read the HTML template
-    const templatePath = path.join(__dirname, './orderConfirmationCool.html');
-    let htmlTemplate = await fs.readFile(templatePath, 'utf-8');
+    const templatePath = path.join(__dirname, "./orderConfirmationCool.html");
+    let htmlTemplate = await fs.readFile(templatePath, "utf-8");
 
-    // Replace placeholders with actual data
-    htmlTemplate = htmlTemplate.replace('{{name}}', name)
-                               .replace('{{orderId}}', order._id)
-                               .replace('{{total}}', total)
-                               .replace('{{status}}', status || 'Pending');
+    htmlTemplate = htmlTemplate
+      .replace("{{name}}", name)
+      .replace("{{orderId}}", order._id)
+      .replace("{{total}}", total)
+      .replace("{{status}}", status || "Pending");
 
-    // Send email notification for new order
     const orderCreationEmail = {
       to: email,
       subject: "🎉 Your Awesome Order is Confirmed! 🛍️",
-      html: htmlTemplate
+      html: htmlTemplate,
     };
 
     await transporter.sendMail(orderCreationEmail);
 
-    // Also send status change email if status is provided
     if (status) {
       await sendStatusChangeEmail(email, status);
     }
@@ -121,7 +122,7 @@ const createOrder = asyncHandler(async (req, res) => {
 });
 
 const getOrder = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id); 
+  const order = await Order.findById(req.params.id);
   if (!order) {
     res.status(404);
     throw new Error("Order not found");
@@ -161,7 +162,7 @@ const updateOrder = asyncHandler(async (req, res) => {
       await sendStatusChangeEmail(order.email, newStatus);
       console.log(`Status change email sent to ${order.email}`);
     } catch (error) {
-      console.error('Error sending status change email:', error);
+      console.error("Error sending status change email:", error);
     }
   }
 
