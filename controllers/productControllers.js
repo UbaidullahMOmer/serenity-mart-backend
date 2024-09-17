@@ -138,11 +138,9 @@ const updateProduct = asyncHandler(async (req, res) => {
 
 const getProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
-
   if (!id) {
     return res.status(400).json({ message: "Product ID is required" });
   }
-
   try {
     const product = await Product.findById(id);
     if (!product) {
@@ -157,23 +155,18 @@ const getProduct = asyncHandler(async (req, res) => {
 
 const deleteProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
-
   if (!id) {
     return res.status(400).json({ message: "Product ID is required" });
   }
-
   try {
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
-
-    // Delete the associated image from Cloudinary
     if (product.image) {
       const publicId = product.image.split("/").pop().split(".")[0];
       await cloudinary.uploader.destroy(publicId);
     }
-
     await Product.deleteOne({ _id: id });
     res.status(200).json({ message: "Product removed", id: id });
   } catch (error) {
