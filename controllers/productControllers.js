@@ -9,7 +9,7 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
-
+ 
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
@@ -23,7 +23,7 @@ const upload = multer({ storage: storage }).single("image");
 
 const getProducts = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, sort = "-createdAt", category, minPrice, maxPrice } = req.query;
-  const filter = {};
+  const filter = {}; 
   if (category) filter.category = category;
   if (minPrice || maxPrice) {
     filter.price = {};
@@ -54,7 +54,7 @@ const createProduct = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: err.message });
     }
 
-    const { name, price, description, category, discount = 0, isInStock = false } = req.body;
+    const { name, price, description, category, discount = 0, isInStock = true } = req.body;
 
     if (!name || !price || !description || !category || !req.file) {
       return res.status(400).json({ message: "Please provide all required fields and an image" });
