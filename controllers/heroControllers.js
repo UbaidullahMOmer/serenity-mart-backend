@@ -51,7 +51,7 @@ const addImage = asyncHandler(async (req, res) => {
 
     try {   
       const hero = await Hero.findOneOrCreate();
-
+        
       if (req.file) {
         hero.images.push(req.file.path);
       } else {
