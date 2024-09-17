@@ -171,7 +171,7 @@ const deleteProduct = asyncHandler(async (req, res) => {
     res.status(200).json({ message: "Product removed", id: id });
   } catch (error) {
     console.error("Error in deleteProduct:", error);
-    res.status(500).json({ message: "Failed to delete product", error: error.message });
+    res.status(500).json({ message: `Failed to delete product ${error}`, error: error.message });
   }
 });
 
@@ -181,4 +181,4 @@ module.exports = {
   updateProduct,
   getProduct,
   deleteProduct,
-};
+}; 
