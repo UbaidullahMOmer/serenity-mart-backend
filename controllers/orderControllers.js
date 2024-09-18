@@ -16,11 +16,10 @@ const transporter = nodemailer.createTransport({
 
 const sendStatusChangeEmail = async (email, status) => {
   const statusMessages = {
-    pending: "Your order has been received and is pending processing.",
-    accepted: "Great news! Your order has been accepted and is being prepared.",
-    delivering: "Your order is now out for delivery!",
-    delivered: "Your order has been successfully delivered. Enjoy!",
-    completed: "Your order is now completed. Thank you for your business!",
+    PENDING: "Your order has been received and is pending processing.",
+    ACCEPTED: "Great news! Your order has been accepted and is being prepared.",
+    DELIVERING: "Your order is now out for delivery!",
+    COMPLETED: "Your order is now completed. Thank you for your business!",
   };
 
   const mailOptions = {
@@ -150,13 +149,10 @@ const updateOrder = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Order not found");
   }
-
   const oldStatus = order.status;
   const newStatus = req.body.status;
-
   Object.assign(order, req.body);
   await order.save();
-
   if (newStatus && oldStatus !== newStatus) {
     try {
       await sendStatusChangeEmail(order.email, newStatus);
@@ -165,7 +161,6 @@ const updateOrder = asyncHandler(async (req, res) => {
       console.error("Error sending status change email:", error);
     }
   }
-
   res.status(200).json(order);
 });
 
