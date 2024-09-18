@@ -15,7 +15,7 @@ const storage = new CloudinaryStorage({
   params: {
     folder: "serenity-mart/hero",
     allowed_formats: ["jpg", "jpeg", "png", "gif", "webp", "svg", "tiff", "bmp"],
-    transformation: [{ width: 500, height: 500, crop: "limit" }],
+    transformation: [{ width: 1980, height: 1080, crop: "limit" }],
   },
 });
  
