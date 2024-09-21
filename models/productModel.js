@@ -26,6 +26,10 @@ const productSchema = mongoose.Schema(
       type: Number,
       required: [true, "Please add the product discount"],
     },
+    sizes: {
+      type: Array,
+      required: [true, "Please add the product size"],
+    },
     category: {
       type: String,
       required: [true, "Please add the product category"],
