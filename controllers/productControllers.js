@@ -82,13 +82,25 @@ const createProduct = asyncHandler(async (req, res) => {
       sizes,
     } = req.body;
 
+    // Log the received data for debugging
+    console.log('Received data:', { name, price, description, category, discount, isInStock, sizes });
+    console.log('Uploaded file:', req.file);
+
+    let productSize;
+    try {
+      productSize = sizes ? JSON.parse(sizes) : [];
+    } catch (error) {
+      console.error('Error parsing sizes:', error);
+      return res.status(400).json({ message: "Invalid sizes format" });
+    }
+
     if (
       !name ||
       !price ||
       !description ||
       !category ||
       !req.file ||
-      sizes?.length > 0
+      !Array.isArray(productSize)
     ) {
       return res
         .status(400)
@@ -97,19 +109,19 @@ const createProduct = asyncHandler(async (req, res) => {
 
     try {
       const discountPrice = discount
-        ? (price - (price * discount) / 100).toFixed(2)
+        ? (parseFloat(price) - (parseFloat(price) * parseFloat(discount)) / 100).toFixed(2)
         : price;
 
       const product = await Product.create({
         name,
-        price,
-        discountPrice,
+        price: parseFloat(price),
+        discountPrice: parseFloat(discountPrice),
         image: req.file.path,
         description,
-        discount,
+        discount: parseFloat(discount),
         category,
         isInStock,
-        sizes,
+        productSize,
       });
 
       res.status(201).json(product);
