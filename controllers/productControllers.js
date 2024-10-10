@@ -24,7 +24,6 @@ const storage = new CloudinaryStorage({
       "tiff",
       "bmp",
     ],
-    transformation: [{ width: 500, height: 500, crop: "limit" }],
   },
 });
 
