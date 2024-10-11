@@ -134,7 +134,7 @@ const createSafePayOrder = asyncHandler(async (req, res) => {
       result = {
         status: "success",
         data: {
-          checkout_url: `${process.env.FRONTEND_URL}/mock-safepay-checkout?orderId=${order._id}`,
+          checkout_url: `http://localhost:5173/mock-safepay-checkout?orderId=${order._id}`,
           token: "mock_token_" + Math.random().toString(36).substr(2, 9),
         }
       };
