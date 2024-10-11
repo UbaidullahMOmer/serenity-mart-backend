@@ -1,9 +1,14 @@
 const asyncHandler = require("express-async-handler");
 const Order = require("../models/orderModel");
-const stripe = require("stripe")(process.env.STRIPE_SECRET);
 const nodemailer = require("nodemailer");
 const fs = require("fs").promises;
 const path = require("path");
+const axios = require("axios");
+
+// SafePay configuration
+const SAFEPAY_ENVIRONMENT = "sandbox"; // Change to "production" for live transactions
+const SAFEPAY_API_KEY = "sec_0cdaa856-0741-4a73-bed2-520ce4ce0478";
+const SAFEPAY_SECRET = "6db29d93b8f49a4924d63dc5699e9feab0283bacd2dd65734d8bb6a8a53c1d6f";
 
 // Configure nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -44,6 +49,58 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
   }
 });
 
+const createSafePayOrder = asyncHandler(async (req, res) => {
+  const {
+    name,
+    email,
+    phone,
+    address,
+    total,
+    products,
+    specialInstructions,
+  } = req.body;
+
+  if (!name || !email || !products || !total || !address || !phone) {
+    res.status(400);
+    throw new Error(
+      "Please provide name, email, products, total, address, and phone"
+    );
+  }
+
+  try {
+    const payload = {
+      amount: total,
+      currency: "PKR",
+      cancel_url: `${process.env.FRONTEND_URL}/cancel`,
+      success_url: `${process.env.FRONTEND_URL}/success`,
+      order: {
+        name,
+        email,
+        phone,
+        address,
+        products: products.map(p => ({ name: p.name, quantity: p.quantity, price: p.price })),
+        special_instructions: specialInstructions,
+      },
+    };
+
+    const response = await axios.post(
+      `https://api.${SAFEPAY_ENVIRONMENT}.getsafepay.com/order/v1/init`,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SAFEPAY_API_KEY}:${SAFEPAY_SECRET}`,
+        },
+      }
+    );
+
+    res.status(200).json(response.data);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: `Failed to create SafePay order: ${error}` });
+  }
+});
+
 const createOrder = asyncHandler(async (req, res) => {
   const {
     name,
@@ -56,7 +113,7 @@ const createOrder = asyncHandler(async (req, res) => {
     paymentIntentId,
     specialInstructions,
     status,
-    paymentMethod = "stripe",
+    paymentMethod = "safepay",
   } = req.body;
 
   if (!name || !email || !products || !total || !address || !phone) {
@@ -67,17 +124,6 @@ const createOrder = asyncHandler(async (req, res) => {
   }
 
   try {
-    if (paymentMethod === "stripe") {
-      const paymentIntent = await stripe.paymentIntents.retrieve(
-        paymentIntentId
-      );
-
-      if (paymentIntent.status !== "succeeded") {
-        res.status(400);
-        throw new Error("Payment not successful");
-      }
-    }
-
     const order = await Order.create({
       name,
       email,
@@ -119,6 +165,7 @@ const createOrder = asyncHandler(async (req, res) => {
     res.status(500).json({ error: `Failed to create order: ${error}` });
   }
 });
+
 
 const getOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
@@ -170,4 +217,5 @@ module.exports = {
   getOrder,
   deleteOrder,
   updateOrder,
+  createSafePayOrder
 };
