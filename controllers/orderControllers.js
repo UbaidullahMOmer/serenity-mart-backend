@@ -11,12 +11,11 @@ const SAFEPAY_ENVIRONMENT = "sandbox"; // Change to "production" for live transa
 const SAFEPAY_API_KEY = "sec_0cdaa856-0741-4a73-bed2-520ce4ce0478";
 const SAFEPAY_SECRET = "6db29d93b8f49a4924d63dc5699e9feab0283bacd2dd65734d8bb6a8a53c1d6f";
 
-// Configure nodemailer transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "itsubaidullahomer@gmail.com",
-    pass: "jvpl omvt bcab trrx",
+    user: "serenitymartpk@gmail.com",
+    pass: "ciwy ibkv xsex fzbo",
   },
 });
 
